@@ -10,8 +10,8 @@ setup(name="django-guardianpie",
 	packages=find_packages(),
 	include_package_data=True,
 	install_requires=[
-		'django-guardian>=1.1.0',
-		'django-tastypie>=0.9.14',
+		'django-guardian',
+		'django-tastypie',
 	],
 )
 
