@@ -7,11 +7,7 @@
 # Virtualenv artifacts
 #gedit backups
 *.coffee
-<<<<<<< HEAD
 *.egg-info
-=======
-*.egg-info/
->>>>>>> master
 *.log
 *.pid
 *.egg-info/
