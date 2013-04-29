@@ -72,8 +72,7 @@ class GuardianAuthorization(DjangoAuthorization):
     def generic_list_check(self, object_list, bundle, permission):
         if not self.generic_base_check(object_list, bundle):
             raise Unauthorized("You are not allowed to access that resource.")
-
-        return get_objects_for_user(bundle.request.user, object_list, permission)
+        return get_objects_for_user(bundle.request.user, permission, object_list)
 
     # List Checks
     def create_list(self, object_list, bundle):
