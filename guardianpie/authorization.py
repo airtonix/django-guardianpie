@@ -1,12 +1,13 @@
 import logging
+from django.conf import settings
 
 from tastypie.authorization import DjangoAuthorization
-from tastypie.http import HttpGone, HttpForbidden, HttpNoContent, HttpMultipleChoices, HttpApplicationError, HttpNotImplemented
-
+from tastypie.http import HttpForbidden, HttpApplicationError
 from guardian.shortcuts import get_objects_for_user
 
 
 logger = logging.getLogger(__name__)
+ALWAYS_ALLOW_STAFF = getattr(settings, 'GUARDIANPIE_ALWAYS_ALLOW_STAFF', True)
 
 
 class GuardianAuthorization(DjangoAuthorization):
@@ -56,7 +57,13 @@ class GuardianAuthorization(DjangoAuthorization):
         self.create_permission_code = kwargs.pop("create_permission_code", 'can_create')
         self.update_permission_code = kwargs.pop("update_permission_code", 'can_update')
         self.delete_permission_code = kwargs.pop("delete_permission_code", 'can_delete')
-        super(GuardianAuthorization, self).__init__(*args, **kwargs)
+
+    def is_site_moderator(self, user=None):
+        if user.is_superuser:
+            return True
+        elif user.is_staff and ALWAYS_ALLOW_STAFF:
+            return True
+        return False
 
     def generic_base_check(self, object_list, bundle):
         """
@@ -65,7 +72,7 @@ class GuardianAuthorization(DjangoAuthorization):
                 b) the `bundle.request` object doesn have a `user` attribute
         """
         if not self.base_checks(bundle.request, object_list.model):
-            raise HttpApplicationError("Invalid resource.")
+            return HttpApplicationError("Invalid resource.")
         return True
 
     def generic_item_check(self, object_list, bundle, permission):
@@ -73,21 +80,27 @@ class GuardianAuthorization(DjangoAuthorization):
             Single item check, returns boolean indicating that the user
             can access the item resource.
         """
+        user = bundle.request.user
         self.generic_base_check(object_list, bundle)
-        if not bundle.request.user.has_perm(permission, bundle.obj):
-            raise HttpForbidden("You are not allowed to access that resource.")
+        if self.is_site_moderator(user):
+            return True
+        if not user.has_perm(permission, bundle.obj):
+            return HttpForbidden("You are not allowed to access that resource.")
 
         return True
 
     def generic_list_check(self, object_list, bundle, permission):
         """
-            Multiple item check, returns queryset of resource items the user 
+            Multiple item check, returns queryset of resource items the user
             can access.
 
             TODO: debating whether to return an empty list or HttpNoContent
         """
+        user = bundle.request.user
         self.generic_base_check(object_list, bundle)
-        return get_objects_for_user(bundle.request.user, permission, object_list)
+        if self.is_site_moderator(user):
+            return object_list
+        return get_objects_for_user(user, permission, object_list)
 
     # List Checks
     def create_list(self, object_list, bundle):
@@ -104,7 +117,9 @@ class GuardianAuthorization(DjangoAuthorization):
 
     # Item Checks
     def create_detail(self, object_list, bundle):
-        return self.generic_item_check(object_list, bundle, self.create_permission_code)
+        output = self.generic_item_check(object_list, bundle, self.create_permission_code)
+        print("checking create detail permission", bundle.obj, "for user:", bundle.request.user, "with permission code", self.create_permission_code)
+        return output
 
     def read_detail(self, object_list, bundle):
         return self.generic_item_check(object_list, bundle, self.view_permission_code)

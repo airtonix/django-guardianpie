@@ -1,11 +1,11 @@
+import logging
+
 from tastypie.resources import ModelResource
 from tastypie.authentication import MultiAuthentication, SessionAuthentication, ApiKeyAuthentication
 from tastypie.utils import trailing_slash
-
 from surlex.dj import surl
 
-# from guardian.models import UserObjectPermission, GroupObjectPermission
-# from guardian.core import ObjectPermissionChecker
+logger = logging.getLogger(__name__)
 
 
 class PermissionResource(ModelResource):
