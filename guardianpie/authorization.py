@@ -144,9 +144,7 @@ class GuardianAuthorization(DjangoAuthorization):
 
     # Item Checks
     def create_detail(self, object_list, bundle):
-        output = self.generic_item_check(object_list, bundle, self.create_permission_code)
-        print("checking create detail permission", bundle.obj, "for user:", bundle.request.user, "with permission code", self.create_permission_code)
-        return output
+        return self.generic_item_check(object_list, bundle, self.create_permission_code)
 
     def read_detail(self, object_list, bundle):
         return self.generic_item_check(object_list, bundle, self.view_permission_code)
