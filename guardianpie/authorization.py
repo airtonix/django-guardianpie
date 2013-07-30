@@ -17,17 +17,25 @@ class GuardianAuthorization(DjangoAuthorization):
 
         Object level permission checking with django-guardian for django models exposed via tastypie.
 
-    :create_permission_code:
-        the permission code that signifies the user can create one of these objects
-    :view_permission_code:
-        the permission code that signifies the user can view the detail
-    :update_permission_code:
-        the permission code that signifies the user can update one of these objects
-    :remove_permission_code:
-        the permission code that signifies the user can remove one of these objects
+    :param requires_view_code: the permission code that signifies the user can view the detail
+    :type requires_view_code: boolean
+    :param view_permission_code: the permission code that signifies the user can view the detail
+    :type view_permission_code: string
 
-    :kwargs:
-        other permission codes
+    :param requires_create_code: will permission checks be carried out for create operations?
+    :type requires_create_code: boolean
+    :param create_permission_code: the permission code that signifies the user can create one of these objects
+    :type create_permission_code: string
+
+    :param requires_update_code: will permission checks be carried out for update operations?
+    :type requires_update_code: boolean
+    :param update_permission_code: the permission code that signifies the user can update one of these objects
+    :type update_permission_code: string
+
+    :param requires_remove_code: will permission checks be carried out for update operations?
+    :type requires_remove_code: boolean
+    :param remove_permission_code: the permission code that signifies the user can remove one of these objects
+    :type remove_permission_code: string
 
     :return values:
         Empty list : When user requests a list of resources for which they have no
@@ -53,9 +61,16 @@ class GuardianAuthorization(DjangoAuthorization):
     """
 
     def __init__(self, *args, **kwargs):
+        self.requires_view_code = kwargs.pop("requires_view_code", True)
         self.view_permission_code = kwargs.pop("view_permission_code", 'can_view')
+
+        self.requires_create_code = kwargs.pop("requires_create_code", True)
         self.create_permission_code = kwargs.pop("create_permission_code", 'can_create')
+
+        self.requires_update_code = kwargs.pop("requires_update_code", True)
         self.update_permission_code = kwargs.pop("update_permission_code", 'can_update')
+
+        self.requires_delete_code = kwargs.pop("requires_delete_code", True)
         self.delete_permission_code = kwargs.pop("delete_permission_code", 'can_delete')
 
     def is_site_moderator(self, user=None):
@@ -64,6 +79,17 @@ class GuardianAuthorization(DjangoAuthorization):
         elif user.is_staff and ALWAYS_ALLOW_STAFF:
             return True
         return False
+
+    def requires_check(self, permission):
+        if permission is self.create_permission_code and not self.requires_create_code:
+            return False
+        elif permission is self.view_permission_code and not self.requires_view_code:
+            return False
+        elif permission is self.update_permission_code and not self.requires_update_code:
+            return False
+        elif permission is self.delete_permission_code and not self.requires_delete_code:
+            return False
+        return True
 
     def generic_base_check(self, object_list, bundle):
         """
@@ -82,7 +108,7 @@ class GuardianAuthorization(DjangoAuthorization):
         """
         user = bundle.request.user
         self.generic_base_check(object_list, bundle)
-        if self.is_site_moderator(user):
+        if self.is_site_moderator(user) or not self.requires_check(permission):
             return True
         if not user.has_perm(permission, bundle.obj):
             return HttpForbidden("You are not allowed to access that resource.")
@@ -98,7 +124,8 @@ class GuardianAuthorization(DjangoAuthorization):
         """
         user = bundle.request.user
         self.generic_base_check(object_list, bundle)
-        if self.is_site_moderator(user):
+
+        if self.is_site_moderator(user) or not self.requires_check(permission):
             return object_list
         return get_objects_for_user(user, permission, object_list)
 
