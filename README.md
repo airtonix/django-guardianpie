@@ -57,14 +57,14 @@ class PrivateThing(models.Model):
             (settings.API_SOMETHING_PERMISSIONS_VIEW, u'View Something'),
         )
 
-    def save(self, *args, **kwargs):
-        assign_perm(settings.API_PRIVATETHING_PERMISSIONS_VIEW, user_or_group=self.creator, obj=self)
-        assign_perm(settings.API_PRIVATETHING_PERMISSIONS_UPDATE, user_or_group=self.creator, obj=self)
-        assign_perm(settings.API_PRIVATETHING_PERMISSIONS_DELETE, user_or_group=self.creator, obj=self)
-        super(PrivateThing, self).save(*args, **kwargs)
+```
 
+### Signals
 
-#project/accounts/signals.py
+Now you'll need some way to allow the user to do stuff with the model
+
+```
+#project/something/signals.py
 from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver, Signal
@@ -72,11 +72,23 @@ from django.contrib.auth.models import User
 
 from guardian.shortcuts import assign_perm
 
+from .models import PrivateThing
 
 @receiver(post_save, sender=User)
 def allow_user_to_create_privatethings(user=None, **kwargs):
     if not user:
         return None
+
     user.user_permissions.add(settings.API_PRIVATETHING_PERMISSIONS_CREATE)
+
+
+@receiver(post_save, sender=PrivateThing)
+def allow_user_to_edit_privatethings(self, thing=None, *args, **kwargs):
+	if not thing or not isinstance(thing, PrivateThing):
+		return None
+
+    assign_perm(settings.API_PRIVATETHING_PERMISSIONS_VIEW, user_or_group=thing.creator, obj=thing)
+    assign_perm(settings.API_PRIVATETHING_PERMISSIONS_UPDATE, user_or_group=thing.creator, obj=thing)
+    assign_perm(settings.API_PRIVATETHING_PERMISSIONS_DELETE, user_or_group=thing.creator, obj=thing)
 
 ```
